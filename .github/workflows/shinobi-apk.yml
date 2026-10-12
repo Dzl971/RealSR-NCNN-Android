@@ -1,0 +1,58 @@
+name: Shinobi Upscaler APK
+
+on:
+  push:
+    branches: [ "claude/shinobi-upscaler-android-utpwso" ]
+    paths:
+      - ".github/workflows/shinobi-apk.yml"
+      - "RealSR-NCNN-Android-GUI/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: SDK Android (plateforme 36)
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Assets du moteur (programmes + modèles, release 1.11.1)
+        run: |
+          curl -fL -o assets.zip https://github.com/tumuyan/RealSR-NCNN-Android/releases/download/1.11.1/assets.zip
+          mkdir tmp_assets && unzip -q assets.zip -d tmp_assets
+          mkdir -p RealSR-NCNN-Android-GUI/app/src/main/assets
+          cp -r tmp_assets/assets/realsr RealSR-NCNN-Android-GUI/app/src/main/assets/
+          rm -rf assets.zip tmp_assets
+
+      - name: Compiler l'APK
+        working-directory: RealSR-NCNN-Android-GUI
+        run: |
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          chmod +x gradlew
+          ./gradlew assembleDebug --max-workers=2
+
+      - name: Zip + Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          APK=RealSR-NCNN-Android-GUI/app/build/outputs/apk/debug/Shinobi-Upscaler-debug-1.0.0.apk
+          zip -9 -j Shinobi-Upscaler-1.0.0.zip "$APK"
+          TAG=shinobi-upscaler-1.0.0
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" Shinobi-Upscaler-1.0.0.zip --clobber
+          else
+            gh release create "$TAG" Shinobi-Upscaler-1.0.0.zip \
+              --target "$GITHUB_SHA" --title "Shinobi Upscaler 1.0.0 (debug)" \
+              --notes "APK debug dans le zip. Décompresser puis installer (sources inconnues à autoriser)."
+          fi
