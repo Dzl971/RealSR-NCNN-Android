@@ -1,32 +1,27 @@
 plugins {
     id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.plugin.compose'
 }
 
 android {
     compileSdk 36
 
     defaultConfig {
-        applicationId "com.tumuyan.ncnn.realsr"
+        applicationId "com.shinobi.upscaler"
         minSdk 24
+        // Garde targetSdk 28 : indispensable pour pouvoir exécuter les binaires
+        // du moteur (realsr-ncnn, etc.) depuis le cache de l'application (W^X, Android 10+).
         //noinspection ExpiredTargetSdkVersion
         targetSdk 28
-        versionCode 52
-        versionName '1.13.2'
-
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        versionCode 1
+        versionName '1.0.0'
     }
-
 
     buildTypes {
         debug {
-            applicationIdSuffix ".debug"
             debuggable true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            resValue "string", "app_name", "RealSR Debug"
-
         }
-
-
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
@@ -35,31 +30,42 @@ android {
     android.applicationVariants.all {
         variant ->
             variant.outputs.all {
-                outputFileName = "RealSR-NCNN-Android-GUI-armv8a-${variant.versionName}.apk"
+                outputFileName = "Shinobi-Upscaler-${variant.name}-${variant.versionName}.apk"
             }
-    }
-
-    lint {
-        baseline = file("lint-baseline.xml")
     }
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
     namespace 'com.tumuyan.ncnn.realsr'
     buildFeatures {
         buildConfig true
+        compose true
+    }
+    packaging {
+        // Les binaires du moteur sont extraits depuis les assets, rien à stripper ici.
+        resources.excludes += '/META-INF/{AL2.0,LGPL2.1}'
     }
 }
 
 dependencies {
-    // Dependency 'androidx.appcompat:appcompat:1.4.1' requires API level 31
-    implementation 'androidx.appcompat:appcompat:1.3.0'
-    implementation 'com.google.android.material:material:1.13.0'
-    implementation 'androidx.test:monitor:1.8.0'
-    testImplementation 'junit:junit:4.13.2'
-//    androidTestImplementation 'androidx.test.ext:junit:1.1.3'
-//    androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
-    implementation 'com.davemorrissey.labs:subsampling-scale-image-view-androidx:3.10.0'
+    def composeBom = platform('androidx.compose:compose-bom:2024.12.01')
+    implementation composeBom
+    implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.ui:ui-graphics'
+    implementation 'androidx.compose.foundation:foundation'
+    implementation 'androidx.compose.material3:material3'
+    implementation 'androidx.compose.material:material-icons-core'
+    implementation 'androidx.activity:activity-compose:1.9.3'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7'
+    implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.8.7'
+    implementation 'androidx.core:core-ktx:1.15.0'
+    // Aperçu animé des GIF
+    implementation 'io.coil-kt:coil-compose:2.7.0'
+    implementation 'io.coil-kt:coil-gif:2.7.0'
+    debugImplementation 'androidx.compose.ui:ui-tooling'
 }
